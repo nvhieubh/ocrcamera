@@ -363,10 +363,8 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
         llExpense.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this, "on expense click callbacked 1", Toast.LENGTH_SHORT).show();
-
+                //Toast.makeText(MainActivity.this, "on expense click callbacked 1", Toast.LENGTH_SHORT).show();
                 Intent resultIntent = new Intent();
-
                 Bundle res = new Bundle();
 
                 ArrayList<String> results = new ArrayList<>();
@@ -378,9 +376,7 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
                 res.putStringArrayList("MULTIPLEFILENAMES", results);
                 resultIntent.putExtras(res);
                 setResult(RESULT_OK, resultIntent);
-
-                Toast.makeText(MainActivity.this, "on expense click callbacked 2", Toast.LENGTH_LONG).show();
-
+                //Toast.makeText(MainActivity.this, "on expense click callbacked 2", Toast.LENGTH_LONG).show();
                 finish();
             }
         });
