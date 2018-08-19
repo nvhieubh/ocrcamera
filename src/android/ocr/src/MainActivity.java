@@ -7,6 +7,8 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -225,34 +227,17 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
                 && resultCode == AppCompatActivity.RESULT_OK) {
             Uri imageUri = CropImage.getPickImageResultUri(this, data);
 
-            // For API >= 23 we need to check specifically that we have permissions to read external
-            // storage,
-            // but we don't know if we need to for the URI so the simplest is to try open the stream and
-            // see if we get error.
-//            boolean requirePermissions = false;
-//            if (CropImage.isReadExternalStoragePermissionsRequired(this, imageUri)) {
-//
-//                // request permissions and handle the result in onRequestPermissionsResult()
-//                requirePermissions = true;
-//                mCropImageUri = imageUri;
-//                requestPermissions(
-//                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-//                        CropImage.PICK_IMAGE_PERMISSIONS_REQUEST_CODE);
-//                rootView.setVisibility(View.VISIBLE);
-//            } else {
-
-//                Bundle extras = data.getExtras();
-//                Bitmap imageBitmap = (Bitmap) extras.get("data");
-//                mCropImageView.setImageBitmap(imageBitmap);
-
             image = getBase64FromPath(mCurrentPhotoPath);
 
             mCropImageView.setImageUriAsync(Uri.fromFile(new File(mCurrentPhotoPath)));
 
-//            mCropImageView.setImageUriAsync(imageUri);
-
             rootView.setVisibility(View.VISIBLE);
-//            }
+
+        } else{
+            Intent data = new Intent();
+            setResult(RESULT_CANCELED, data);
+
+            finish();
         }
     }
 
@@ -261,7 +246,7 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
         imgCancel.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this, "on cancel clicked", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(MainActivity.this, "on cancel clicked", Toast.LENGTH_SHORT).show();
 
                 Intent data = new Intent();
                 setResult(RESULT_CANCELED, data);
@@ -383,114 +368,6 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
         
     }
 
-    // @Override
-    // public void onClick(View v) {
-    //     switch (v.getId()) {
-
-    //         // Cancel Button
-    //         case R.id.img_right:
-    //             finish();
-    //             break;
-
-    //         case R.id.img_merchant_name_scan:
-
-    //             MerchantName = new String();
-
-    //             imgMerchantNameScan.setVisibility(View.GONE);
-    //             imgMerchantNameDone.setVisibility(View.VISIBLE);
-
-    //             if (scanningID != SCANNING_ID_NOTHING) {
-    //                 return;
-    //             }
-
-    //             mCropImageView.setShowCropOverlay(true);
-    //             scanningID = SCANNING_ID_MERCHANT_NAME;
-    //             break;
-
-    //         case R.id.img_merchant_name_done:
-
-    //             MerchantName = edtMerchantName.getText().toString().trim();
-
-    //             imgMerchantNameDone.setVisibility(View.GONE);
-    //             imgMerchantNameScan.setVisibility(View.VISIBLE);
-
-    //             mCropImageView.setShowCropOverlay(false);
-    //             scanningID = SCANNING_ID_NOTHING;
-    //             break;
-
-    //         case R.id.img_date_scan:
-
-    //             Date = new String();
-
-    //             if (scanningID != SCANNING_ID_NOTHING) {
-    //                 return;
-    //             }
-
-    //             imgDateScan.setVisibility(View.GONE);
-    //             imgDateDone.setVisibility(View.VISIBLE);
-
-    //             mCropImageView.setShowCropOverlay(true);
-    //             scanningID = SCANNING_ID_DATE;
-    //             break;
-
-    //         case R.id.img_date_done:
-
-    //             Date = edtDate.getText().toString().trim();
-
-    //             imgDateDone.setVisibility(View.GONE);
-    //             imgDateScan.setVisibility(View.VISIBLE);
-
-    //             mCropImageView.setShowCropOverlay(false);
-    //             scanningID = SCANNING_ID_NOTHING;
-    //             break;
-
-    //         case R.id.img_amount_scan:
-
-    //             Amount = new String();
-
-    //             if (scanningID != SCANNING_ID_NOTHING) {
-    //                 return;
-    //             }
-
-    //             imgAmountScan.setVisibility(View.GONE);
-    //             imgAmountDone.setVisibility(View.VISIBLE);
-
-    //             mCropImageView.setShowCropOverlay(true);
-    //             scanningID = SCANNING_ID_AMOUNT;
-    //             break;
-
-    //         case R.id.img_amount_done:
-
-    //             Amount = edtAmount.getText().toString().trim();
-
-    //             imgAmountDone.setVisibility(View.GONE);
-    //             imgAmountScan.setVisibility(View.VISIBLE);
-
-    //             mCropImageView.setShowCropOverlay(false);
-    //             scanningID = SCANNING_ID_NOTHING;
-    //             break;
-
-    //         case R.id.ll_expense:
-    //             Intent resultIntent = new Intent();
-
-    //             Bundle res = new Bundle();
-
-    //             ArrayList<String> results = new ArrayList<>();
-    //             results.add(MerchantName);
-    //             results.add(Date);
-    //             results.add(Amount);
-    //             results.add(image);
-
-    //             res.putStringArrayList("MULTIPLEFILENAMES", results);
-    //             resultIntent.putExtras(res);
-    //             setResult(RESULT_OK, resultIntent);
-    //             break;
-
-    //         default:
-    //             break;
-    //     }
-    // }
-
     @Override
     public void onCropImageComplete(CropImageView view, CropImageView.CropResult result) {
         handleCropResult(result);
@@ -534,11 +411,11 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
 
         } else {
             Log.e("AIC", "Failed to crop image", result.getError());
-            Toast.makeText(
+            /**Toast.makeText(
                     MainActivity.this,
                     "Image crop failed: " + result.getError().getMessage(),
                     Toast.LENGTH_SHORT)
-                    .show();
+                    .show();*/
         }
     }
 
@@ -602,7 +479,9 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
-        Bitmap bm = BitmapFactory.decodeStream(fis);
+        Bitmap b = BitmapFactory.decodeStream(fis);
+
+        Bitmap bm = adjustImageOrientation(b, imageFile);
 
         // original measurements
         int origWidth = bm.getWidth();
@@ -619,6 +498,7 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
             destHeight = origHeight;
         }
 
+        Toast.makeText(MainActivity.this, "Width = " + destWidth + " - Height = " + destHeight, Toast.LENGTH_SHORT).show();
         Log.d("NamNT", "Compressed Image Width = " + destWidth + " - Height = " + destHeight);
 
         // we create an scaled bitmap so it reduces the image, not just trim it
@@ -633,6 +513,45 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
 
         Log.d("NamNT", encImage.toString() + "");
         return encImage;
+    }
+
+    private Bitmap adjustImageOrientation(Bitmap image, File f) {
+        int rotate = 0;
+        try {
+    
+            ExifInterface exif = new ExifInterface(f.getAbsolutePath());
+            int orientation = exif.getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL);
+            switch (orientation) {
+            case ExifInterface.ORIENTATION_ROTATE_270:
+                rotate = 270;
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_180:
+                rotate = 180;
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_90:
+                rotate = 90;
+                break;
+    
+            case ExifInterface.ORIENTATION_NORMAL:
+                rotate = 0;
+                break;
+    
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (rotate != 0) {
+            Matrix matrix = new Matrix();
+            matrix.postRotate(rotate);
+    
+            image = Bitmap.createBitmap(image, 0, 0, image.getWidth(),
+                    image.getHeight(), matrix, true);
+        }
+    
+    
+        return image;
     }
 
     private void setImageResouceByBase64(){

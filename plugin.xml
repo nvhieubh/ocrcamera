@@ -37,7 +37,9 @@
         <source-file src="src/android/R.java" target-dir="src/cordova/plugin/ocrcamera" />
         <source-file src="src/android/FileProvider.java" target-dir="src/cordova/plugin/ocrcamera" />
         <source-file src="src/android/ocr/src/MainActivity.java" target-dir="src/cordova/plugin/ocrcamera" />
-        <source-file src="src/android/ocr/src/ItemScan.java" target-dir="src/cordova/plugin/ocrcamera" />     
+        <source-file src="src/android/ocr/src/ItemScan.java" target-dir="src/cordova/plugin/ocrcamera" />
+
+        <source-file src="src/android/ocr/res/drawable/bg_edit_text_underline_custom.xml" target-dir="res/drawable"/>
         <source-file src="src/android/ocr/res/values/colors.xml" target-dir="res/values"/>
         <source-file src="src/android/ocr/res/values/dimens.xml" target-dir="res/values"/>
         <source-file src="src/android/ocr/res/values/strings_en.xml" target-dir="res/values"/>

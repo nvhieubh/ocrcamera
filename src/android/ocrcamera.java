@@ -58,7 +58,7 @@ public class ocrcamera extends CordovaPlugin {
             this.callbackContext.success(itemScan.toJSONObject());
             
         } else if (resultCode == Activity.RESULT_CANCELED){
-            Toast.makeText(webView.getContext(), "on Cancel Click", Toast.LENGTH_LONG).show();
+            // Toast.makeText(webView.getContext(), "on Cancel Click", Toast.LENGTH_LONG).show();
             this.callbackContext.error("Failed");
         }
     }
