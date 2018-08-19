@@ -234,11 +234,15 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
             rootView.setVisibility(View.VISIBLE);
 
         } else{
-            Intent data = new Intent();
-            setResult(RESULT_CANCELED, data);
-
-            finish();
+            processCameraCanceled();
         }
+    }
+
+    private void processCameraCanceled(){
+        Intent data = new Intent();
+        setResult(RESULT_CANCELED, data);
+
+        finish();
     }
 
     private void onClick(){
