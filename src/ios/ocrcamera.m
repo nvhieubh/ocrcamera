@@ -52,6 +52,7 @@
 
 - (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker
 {
+	commandID = @"";
     [picker dismissViewControllerAnimated:YES completion:nil];
 }
 - (void)completeWithImage:(UIImage *)img dictionary:(NSDictionary *)dic{
