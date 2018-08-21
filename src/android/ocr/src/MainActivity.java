@@ -93,7 +93,7 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
 
     private Handler cropHandler = new Handler();
 
-    private long delay = 2000;
+    private long delay = 500;
 
     private String mCurrentPhotoPath;
 
