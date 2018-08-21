@@ -314,10 +314,10 @@
             android:layout_height="match_parent"
             android:layout_above="@+id/ln_bottom_bar"
             android:layout_below="@+id/rl_top_bar"
-            android:layout_marginBottom="@dimen/padding_big_x"
+            android:layout_marginBottom="@dimen/padding_normal"
             android:layout_marginLeft="@dimen/padding_normal"
             android:layout_marginRight="@dimen/padding_normal"
-            android:layout_marginTop="@dimen/padding_big_x"
+            android:layout_marginTop="@dimen/padding_normal"
             android:orientation="vertical">
 
             <com.theartofdev.edmodo.cropper.CropImageView
