@@ -82,6 +82,10 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
     LinearLayout llExpense;
     ImageView imgExpense;
 
+    TextView tvMerchantName;
+    TextView tvDate;
+    TextView tvAmount;
+
     private int scanningID = 0;
 
     private Uri mCropImageUri;
@@ -146,6 +150,10 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
 
         llExpense = (LinearLayout) findViewById(r.getId("id", "ll_expense"));
         imgExpense = (ImageView) findViewById(r.getId("id", "img_expense"));
+
+        tvMerchantName = (TextView) findViewById(r.getId("id", "tv_merchant_name"));
+        tvDate = (TextView) findViewById(r.getId("id", "tv_date"));
+        tvAmount = (TextView) findViewById(r.getId("id", "tv_amount"));
 
         setImageResouceByBase64();
         initUI();
@@ -259,6 +267,63 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
             }
         });
 
+        tvMerchantName.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                MerchantName = new String();
+
+                imgMerchantNameScan.setVisibility(View.GONE);
+                imgMerchantNameDone.setVisibility(View.VISIBLE);
+                imgDateScan.setVisibility(View.VISIBLE);
+                imgDateDone.setVisibility(View.GONE);
+                imgAmountScan.setVisibility(View.VISIBLE);
+                imgAmountDone.setVisibility(View.GONE);
+
+                if(!mCropImageView.isShowCropOverlay()){
+                    mCropImageView.setShowCropOverlay(true);
+                }
+                scanningID = SCANNING_ID_MERCHANT_NAME;
+            }
+        });
+
+        tvDate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Date = new String();
+
+                imgMerchantNameScan.setVisibility(View.VISIBLE);
+                imgMerchantNameDone.setVisibility(View.GONE);
+                imgDateScan.setVisibility(View.GONE);
+                imgDateDone.setVisibility(View.VISIBLE);
+                imgAmountScan.setVisibility(View.VISIBLE);
+                imgAmountDone.setVisibility(View.GONE);
+
+                if(!mCropImageView.isShowCropOverlay()){
+                    mCropImageView.setShowCropOverlay(true);
+                }
+                scanningID = SCANNING_ID_DATE;
+            }
+        });
+
+        tvAmount.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Amount = new String();
+
+                imgMerchantNameScan.setVisibility(View.VISIBLE);
+                imgMerchantNameDone.setVisibility(View.GONE);
+                imgDateScan.setVisibility(View.VISIBLE);
+                imgDateDone.setVisibility(View.GONE);
+                imgAmountScan.setVisibility(View.GONE);
+                imgAmountDone.setVisibility(View.VISIBLE);
+
+                if(!mCropImageView.isShowCropOverlay()){
+                    mCropImageView.setShowCropOverlay(true);
+                }
+                scanningID = SCANNING_ID_AMOUNT;
+            }
+        });
+
         imgMerchantNameScan.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -266,12 +331,14 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
 
                 imgMerchantNameScan.setVisibility(View.GONE);
                 imgMerchantNameDone.setVisibility(View.VISIBLE);
+                imgDateScan.setVisibility(View.VISIBLE);
+                imgDateDone.setVisibility(View.GONE);
+                imgAmountScan.setVisibility(View.VISIBLE);
+                imgAmountDone.setVisibility(View.GONE);
 
-                if (scanningID != SCANNING_ID_NOTHING) {
-                    return;
+                if(!mCropImageView.isShowCropOverlay()){
+                    mCropImageView.setShowCropOverlay(true);
                 }
-
-                mCropImageView.setShowCropOverlay(true);
                 scanningID = SCANNING_ID_MERCHANT_NAME;
             }
         });
@@ -294,14 +361,16 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
             public void onClick(View v) {
                 Date = new String();
 
-                if (scanningID != SCANNING_ID_NOTHING) {
-                    return;
-                }
-
+                imgMerchantNameScan.setVisibility(View.VISIBLE);
+                imgMerchantNameDone.setVisibility(View.GONE);
                 imgDateScan.setVisibility(View.GONE);
                 imgDateDone.setVisibility(View.VISIBLE);
+                imgAmountScan.setVisibility(View.VISIBLE);
+                imgAmountDone.setVisibility(View.GONE);
 
-                mCropImageView.setShowCropOverlay(true);
+                if(!mCropImageView.isShowCropOverlay()){
+                    mCropImageView.setShowCropOverlay(true);
+                }
                 scanningID = SCANNING_ID_DATE;
             }
         });
@@ -324,14 +393,16 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
             public void onClick(View v) {
                 Amount = new String();
 
-                if (scanningID != SCANNING_ID_NOTHING) {
-                    return;
-                }
-
+                imgMerchantNameScan.setVisibility(View.VISIBLE);
+                imgMerchantNameDone.setVisibility(View.GONE);
+                imgDateScan.setVisibility(View.VISIBLE);
+                imgDateDone.setVisibility(View.GONE);
                 imgAmountScan.setVisibility(View.GONE);
                 imgAmountDone.setVisibility(View.VISIBLE);
 
-                mCropImageView.setShowCropOverlay(true);
+                if(!mCropImageView.isShowCropOverlay()){
+                    mCropImageView.setShowCropOverlay(true);
+                }
                 scanningID = SCANNING_ID_AMOUNT;
             }
         });
@@ -509,7 +580,7 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
         Bitmap bm2 = Bitmap.createScaledBitmap(bm, destWidth, destHeight, false);
 
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        bm2.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream);
+        bm2.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream);
 
         byte[] bytes = byteArrayOutputStream.toByteArray();
         String encImage = Base64.encodeToString(bytes, Base64.DEFAULT);
