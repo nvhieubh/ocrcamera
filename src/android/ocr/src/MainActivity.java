@@ -176,6 +176,7 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
         mCropImageView.setShowProgressBar(false);
         mCropImageView.setGuidelines(CropImageView.Guidelines.OFF);
         mCropImageView.setShowCropOverlay(false);
+        mCropImageView.setMaxZoom(10);
 
         mCropImageView.setOnCropWindowChangedListener(new CropImageView.OnSetCropWindowChangeListener() {
             @Override
@@ -347,7 +348,6 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
         imgMerchantNameDone.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                MerchantName = edtMerchantName.getText().toString().trim();
 
                 imgMerchantNameDone.setVisibility(View.GONE);
                 imgMerchantNameScan.setVisibility(View.VISIBLE);
@@ -379,7 +379,6 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
         imgDateDone.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Date = edtDate.getText().toString().trim();
 
                 imgDateDone.setVisibility(View.GONE);
                 imgDateScan.setVisibility(View.VISIBLE);
@@ -411,7 +410,6 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
         imgAmountDone.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Amount = edtAmount.getText().toString().trim();
 
                 imgAmountDone.setVisibility(View.GONE);
                 imgAmountScan.setVisibility(View.VISIBLE);
@@ -428,6 +426,8 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
                 Intent resultIntent = new Intent();
                 Bundle res = new Bundle();
 
+                initScanData();
+
                 ArrayList<String> results = new ArrayList<>();
                 results.add(MerchantName);
                 results.add(Date);
@@ -442,6 +442,12 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
             }
         });
         
+    }
+
+    private void initScanData(){
+        MerchantName = edtMerchantName.getText().toString().trim();
+        Date = edtDate.getText().toString().trim();
+        Amount = edtAmount.getText().toString().trim();
     }
 
     @Override
