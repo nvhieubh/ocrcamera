@@ -580,7 +580,7 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
             destHeight = origHeight;
         }
 
-        Toast.makeText(MainActivity.this, "Width = " + destWidth + " - Height = " + destHeight, Toast.LENGTH_SHORT).show();
+        //Toast.makeText(MainActivity.this, "Width = " + destWidth + " - Height = " + destHeight, Toast.LENGTH_SHORT).show();
         Log.d("NamNT", "Compressed Image Width = " + destWidth + " - Height = " + destHeight);
 
         // we create an scaled bitmap so it reduces the image, not just trim it
