@@ -569,7 +569,7 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
         int origWidth = bm.getWidth();
         int origHeight = bm.getHeight();
 
-        int destWidth = 375;
+        int destWidth = 300;
         int destHeight;
 
         if(origWidth > destWidth) {
@@ -587,7 +587,7 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
         Bitmap bm2 = Bitmap.createScaledBitmap(bm, destWidth, destHeight, false);
 
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        bm2.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream);
+        bm2.compress(Bitmap.CompressFormat.JPEG, 30, byteArrayOutputStream);
 
         byte[] bytes = byteArrayOutputStream.toByteArray();
         String encImage = Base64.encodeToString(bytes, Base64.DEFAULT);
