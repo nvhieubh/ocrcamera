@@ -2,39 +2,54 @@ package cordova.plugin.ocrcamera;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.net.Uri;
+import android.graphics.PorterDuff;
 import android.graphics.Matrix;
+import android.graphics.RectF;
 import android.media.ExifInterface;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
 import android.util.SparseArray;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.animation.AccelerateInterpolator;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
-import android.widget.Toast;
-import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.text.TextBlock;
 import com.google.android.gms.vision.text.TextRecognizer;
-import com.theartofdev.edmodo.cropper.CropImage;
-import com.theartofdev.edmodo.cropper.CropImageView;
+import com.yalantis.ucrop.UCrop;
+import com.yalantis.ucrop.UCropActivity;
+import com.yalantis.ucrop.callback.BitmapCropCallback;
+import com.yalantis.ucrop.callback.BitmapLoadCallback;
+import com.yalantis.ucrop.callback.OverlayViewChangeListener;
+import com.yalantis.ucrop.model.AspectRatio;
+import com.yalantis.ucrop.model.ExifInfo;
+import com.yalantis.ucrop.util.BitmapLoadUtils;
+import com.yalantis.ucrop.view.TransformImageView;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -45,29 +60,29 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
-import butterknife.BindView;
-import butterknife.ButterKnife;
-
 import static android.content.ContentValues.TAG;
-import static com.theartofdev.edmodo.cropper.CropImage.PICK_IMAGE_CHOOSER_REQUEST_CODE;
-import static com.theartofdev.edmodo.cropper.CropImage.isExplicitCameraPermissionRequired;
 
 import cordova.plugin.ocrcamera.R;
 import cordova.plugin.ocrcamera.FileProvider;
+import cordova.plugin.ocrcamera.CropImageView;
+import cordova.plugin.ocrcamera.GestureCropImageView;
+import cordova.plugin.ocrcamera.OverlayView;
+import cordova.plugin.ocrcamera.UCropView;
+import cordova.plugin.ocrcamera.OnCropImageViewChangedListener;
 
-public class MainActivity extends AppCompatActivity implements CropImageView.OnSetImageUriCompleteListener,
-        CropImageView.OnCropImageCompleteListener {
+public class MainActivity extends AppCompatActivity implements OnCropImageViewChangedListener{
 
     private static int SCANNING_ID_NOTHING = 0;
     private static int SCANNING_ID_MERCHANT_NAME = 1;
     private static int SCANNING_ID_DATE = 2;
     private static int SCANNING_ID_AMOUNT = 3;
     
+    private static int PICK_IMAGE_CHOOSER_REQUEST_CODE = 1000;
+    private static final int CAMERA_CAPTURE_PERMISSIONS_REQUEST_CODE = 2011;
+
     RelativeLayout rootView;
 
     ImageView imgCancel;
-
-    CropImageView mCropImageView;
 
     ImageView imgMerchantNameScan;
     ImageView imgMerchantNameDone;
@@ -87,6 +102,34 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
     TextView tvDate;
     TextView tvAmount;
 
+    // ========================= News added ==============================
+
+    private UCropView mUCropView;
+    private GestureCropImageView mGestureCropImageView;
+    private OverlayView mOverlayView;
+
+    private int mRootViewBackgroundColor;
+    private View mBlockingView;
+
+    private Bitmap.CompressFormat mCompressFormat = Bitmap.CompressFormat.JPEG;
+    private int mCompressQuality = 50;
+
+    private boolean mShowLoader = true;
+
+    // Aspect ratio options
+    private float aspectRatioX = 1;
+    private float aspectRatioY = 1;
+
+    private int aspectRationSelectedByDefault = 0;
+
+    // Result bitmap max size options
+    private int maxSizeX = 0;
+    private int maxSizeY = 0;
+
+    private String CROPPED_IMAGE_NAME = "ocrCropImage";
+
+    // ========================= End News added ==============================
+
     private int scanningID = 0;
 
     private Uri mCropImageUri;
@@ -97,22 +140,26 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
 
     private String mCurrentPhotoPath;
 
-    private R r;
-
     private String MerchantName = new String(),
             Date = new String(),
             Amount = new String(),
             image = new String();
+
+    private boolean isRunning;
+
+    private R r;
 
     private Runnable cropRunnable = new Runnable() {
 
         @Override
         public void run() {
 
+            isRunning = true;
+
             cropHandler.postDelayed(cropRunnable, delay);
 
-            // Crop Text Image
-            mCropImageView.getCroppedImageAsync();
+            // Crop Image for Scan
+            cropAndSaveImage();
         }
     };
 
@@ -133,10 +180,17 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
         r = new R(this);
         setContentView(r.getId("layout", "main_activity"));
 
+        initUI();
+        setImageResouceByBase64();
+        onClick();
+        initImageData();
+    }
+
+    private void initUI() {
+
         // Declare Views
         rootView = (RelativeLayout) findViewById(r.getId("id", "root_view"));
         imgCancel = (ImageView) findViewById(r.getId("id", "img_right"));
-        mCropImageView = (CropImageView) findViewById(r.getId("id", "cropImageView"));
 
         imgMerchantNameScan = (ImageView) findViewById(r.getId("id", "img_merchant_name_scan"));
         imgMerchantNameDone = (ImageView) findViewById(r.getId("id", "img_merchant_name_done"));
@@ -155,40 +209,250 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
         tvMerchantName = (TextView) findViewById(r.getId("id", "tv_merchant_name"));
         tvDate = (TextView) findViewById(r.getId("id", "tv_date"));
         tvAmount = (TextView) findViewById(r.getId("id", "tv_amount"));
-
-        setImageResouceByBase64();
-        initUI();
-        onClick();
-        initImageData();
-    }
-
-    private void initUI() {
+        
         rootView.setVisibility(View.GONE);
 
-        // TODO: Init Crop Image View
-        initCropImageView();
+        initiateRootViews();
+        setAllowedGestures();
+        addBlockingView();
     }
 
-    private void initCropImageView() {
-        mCropImageView.setOnSetImageUriCompleteListener(this);
-        mCropImageView.setOnCropImageCompleteListener(this);
+    private void initiateRootViews() {
+        mUCropView = findViewById(r.getId("id", "ucrop"));
+        mGestureCropImageView = mUCropView.getCropImageView();
+        mOverlayView = mUCropView.getOverlayView();
 
-        mCropImageView.setShowProgressBar(false);
-        mCropImageView.setGuidelines(CropImageView.Guidelines.OFF);
-        mCropImageView.setShowCropOverlay(false);
-        mCropImageView.setMaxZoom(10);
+        mGestureCropImageView.setTransformImageListener(mImageListener);
 
-        mCropImageView.setOnCropWindowChangedListener(new CropImageView.OnSetCropWindowChangeListener() {
+        mRootViewBackgroundColor = ContextCompat.getColor(this, r.getId("color", "ucrop_color_crop_background"));
+        findViewById(r.getId("id", "ucrop_frame")).setBackgroundColor(mRootViewBackgroundColor);
+    }
+
+    /**
+     * This method extracts all data from the incoming intent and setups views properly.
+     */
+    private void setImageData(Uri inputUri) {
+
+        Uri outputUri = Uri.fromFile(new File(getCacheDir(), CROPPED_IMAGE_NAME));
+
+        processOptions();
+
+        if (inputUri != null && outputUri != null) {
+            try {
+                mGestureCropImageView.setImageUri(inputUri, outputUri);
+            } catch (Exception e) {
+                setResultError(e);
+                finish();
+            }
+        } else {
+            setResultError(new NullPointerException(getString(r.getId("string", "ucrop_error_input_data_is_absent"))));
+            finish();
+        }
+    }
+
+    /**
+     * This method extracts {@link com.yalantis.ucrop.UCrop.Options #optionsBundle} from incoming intent
+     * and setups Activity, {@link OverlayView} and {@link CropImageView} properly.
+     */
+    @SuppressWarnings("deprecation")
+    private void processOptions() {
+        //=========================== New =====================================
+        mGestureCropImageView.setMaxBitmapSize(CropImageView.DEFAULT_MAX_BITMAP_SIZE);
+        mGestureCropImageView.setMaxScaleMultiplier(CropImageView.DEFAULT_MAX_SCALE_MULTIPLIER);
+        mGestureCropImageView.setImageToWrapCropBoundsAnimDuration(CropImageView.DEFAULT_IMAGE_TO_CROP_BOUNDS_ANIM_DURATION);
+
+        // Overlay view options
+        mOverlayView.setFreestyleCropEnabled(true);
+
+        mOverlayView.setDimmedColor(getResources().getColor(r.getId("color", "ucrop_color_default_dimmed")));
+        mOverlayView.setCircleDimmedLayer(OverlayView.DEFAULT_CIRCLE_DIMMED_LAYER);
+
+        mOverlayView.setShowCropFrame(OverlayView.DEFAULT_SHOW_CROP_FRAME);
+        mOverlayView.setCropFrameColor(getResources().getColor(r.getId("color", "ucrop_color_default_crop_frame")));
+        mOverlayView.setCropFrameStrokeWidth(getResources().getDimensionPixelSize(r.getId("dimen", "ucrop_default_crop_frame_stoke_width")));
+
+        mOverlayView.setShowCropGrid(OverlayView.DEFAULT_SHOW_CROP_GRID);
+        mOverlayView.setCropGridRowCount(OverlayView.DEFAULT_CROP_GRID_ROW_COUNT);
+        mOverlayView.setCropGridColumnCount(OverlayView.DEFAULT_CROP_GRID_COLUMN_COUNT);
+        mOverlayView.setCropGridColor(getResources().getColor(r.getId("color", "ucrop_color_default_crop_grid")));
+        mOverlayView.setCropGridStrokeWidth(getResources().getDimensionPixelSize(r.getId("dimen", "ucrop_default_crop_grid_stoke_width")));
+
+        mOverlayView.setOverlayViewChangeListener(new OverlayViewChangeListener() {
             @Override
-            public void onCropWindowChanged() {
+            public void onCropRectUpdated(RectF cropRect) {
+                mGestureCropImageView.setCropRect(cropRect);
 
-                // TODO: Remove Previous Runnable if it isn't finish
-                cropHandler.removeCallbacks(cropRunnable);
-
-                // TODO: Post Runnable Delay
-                cropHandler.postDelayed(cropRunnable, delay);
+                if(scanningID != SCANNING_ID_NOTHING && !isRunning){
+                    // TODO: Post Runnable Delay
+                    cropHandler.postDelayed(cropRunnable, delay);
+                }
             }
         });
+
+        ArrayList<AspectRatio> aspectRatioList = null;
+        //=============================
+
+        if (aspectRatioX > 0 && aspectRatioY > 0) {
+            mGestureCropImageView.setTargetAspectRatio(aspectRatioX / aspectRatioY);
+        } else if (aspectRatioList != null && aspectRationSelectedByDefault < aspectRatioList.size()) {
+            mGestureCropImageView.setTargetAspectRatio(aspectRatioList.get(aspectRationSelectedByDefault).getAspectRatioX() /
+                    aspectRatioList.get(aspectRationSelectedByDefault).getAspectRatioY());
+        } else {
+            mGestureCropImageView.setTargetAspectRatio(CropImageView.SOURCE_IMAGE_ASPECT_RATIO);
+        }
+
+        if (maxSizeX > 0 && maxSizeY > 0) {
+            mGestureCropImageView.setMaxResultImageSizeX(maxSizeX);
+            mGestureCropImageView.setMaxResultImageSizeY(maxSizeY);
+        }
+    }
+
+    /**
+     * On Image Move
+     */
+    @Override
+    public void onCropImageViewChangedListener() {
+        if(scanningID != SCANNING_ID_NOTHING && !isRunning){
+            // TODO: Post Runnable Delay
+            cropHandler.postDelayed(cropRunnable, delay);
+        }
+    }
+
+    private TransformImageView.TransformImageListener mImageListener = new TransformImageView.TransformImageListener() {
+        @Override
+        public void onRotate(float currentAngle) {
+//            setAngleText(currentAngle);
+        }
+
+        @Override
+        public void onScale(float currentScale) {
+//            setScaleText(currentScale);
+        }
+
+        @Override
+        public void onLoadComplete() {
+            mUCropView.animate().alpha(1).setDuration(300).setInterpolator(new AccelerateInterpolator());
+            mBlockingView.setClickable(false);
+            mShowLoader = false;
+            supportInvalidateOptionsMenu();
+        }
+
+        @Override
+        public void onLoadFailure(@NonNull Exception e) {
+            setResultError(e);
+//            finish();
+        }
+
+    };
+
+    protected void cropAndSaveImage() {
+//        mBlockingView.setClickable(true);
+        mShowLoader = true;
+        supportInvalidateOptionsMenu();
+
+        mGestureCropImageView.cropAndSaveImage(mCompressFormat, mCompressQuality, new BitmapCropCallback() {
+
+            @Override
+            public void onBitmapCropped(@NonNull Uri resultUri, int offsetX, int offsetY, int imageWidth, int imageHeight) {
+                setResultUri(resultUri, mGestureCropImageView.getTargetAspectRatio(), offsetX, offsetY, imageWidth, imageHeight);
+//                finish();
+            }
+
+            @Override
+            public void onCropFailure(@NonNull Throwable t) {
+                setResultError(t);
+//                finish();
+            }
+        });
+    }
+
+    private void setAllowedGestures() {
+        mGestureCropImageView.setScaleEnabled(true);
+        mGestureCropImageView.setRotateEnabled(false);
+    }
+
+    /**
+     * Adds view that covers everything below the Toolbar.
+     * When it's clickable - user won't be able to click/touch anything below the Toolbar.
+     * Need to block user input while loading and cropping an image.
+     */
+    private void addBlockingView() {
+        if (mBlockingView == null) {
+            mBlockingView = new View(this);
+            RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            lp.addRule(RelativeLayout.BELOW, r.getId("id", "toolbar"));
+            mBlockingView.setLayoutParams(lp);
+            mBlockingView.setClickable(true);
+        }
+
+        rootView.addView(mBlockingView);
+    }
+
+    protected void setResultUri(Uri uri, float resultAspectRatio, int offsetX, int offsetY, int imageWidth, int imageHeight) {
+
+        Log.d("namnt", "image width = " + imageWidth + " - height = " + imageHeight);
+
+        try {
+            getImageBitmapFromUri(uri);
+        }catch (Exception e){
+            throw new RuntimeException("Something failed.", new Throwable(e.getMessage()));
+        }
+    }
+
+    private void getImageBitmapFromUri(@NonNull Uri imageUri) throws Exception {
+        int maxBitmapSize = BitmapLoadUtils.calculateMaxBitmapSize(MainActivity.this);
+
+        BitmapLoadUtils.decodeBitmapInBackground(MainActivity.this, imageUri, null, maxBitmapSize, maxBitmapSize,
+                new BitmapLoadCallback() {
+
+                    @Override
+                    public void onBitmapLoaded(@NonNull Bitmap bitmap, @NonNull ExifInfo exifInfo, @NonNull String imageInputPath, @Nullable String imageOutputPath) {
+                        processCropResultBitmap(bitmap);
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull Exception bitmapWorkerException) {
+                        Log.e(TAG, "onFailure: setImageUri", bitmapWorkerException);
+                    }
+                });
+    }
+
+    private void processCropResultBitmap(Bitmap bitmap){
+        String scanResult = new String();
+
+        TextRecognizer ocrFrame = new TextRecognizer.Builder(getApplicationContext()).build();
+        Frame frame = new Frame.Builder().setBitmap(bitmap).build();
+        if (ocrFrame.isOperational()) {
+            Log.e(TAG, "Textrecognizer is operational");
+        }
+        SparseArray<TextBlock> textBlocks = ocrFrame.detect(frame);
+
+        if (textBlocks.size() > 0) {
+            for (int i = 0; i < textBlocks.size(); i++) {
+
+                TextBlock textBlock = textBlocks.get(textBlocks.keyAt(i));
+                scanResult = scanResult.length() > 1 ? scanResult + " " + textBlock.getValue() : textBlock.getValue();
+            }
+
+            if (scanningID == SCANNING_ID_MERCHANT_NAME) {
+                edtMerchantName.setText(scanResult);
+            } else if (scanningID == SCANNING_ID_DATE) {
+                edtDate.setText(scanResult);
+            } else if (scanningID == SCANNING_ID_AMOUNT) {
+                edtAmount.setText(scanResult);
+            }
+
+            cropHandler.removeCallbacks(cropRunnable);
+            isRunning = false;
+        }
+    }
+
+    protected void setResultError(Throwable throwable) {
+        Toast.makeText(
+                MainActivity.this,
+                "Image crop failed: " + throwable.getMessage(),
+                Toast.LENGTH_SHORT)
+                .show();
     }
 
     // =========================== Handle Load and Crop Image ===========================
@@ -201,7 +465,7 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
             if (currentApiVersion >= Build.VERSION_CODES.M) {
                 requestPermissions(
                         new String[]{Manifest.permission.CAMERA},
-                        CropImage.CAMERA_CAPTURE_PERMISSIONS_REQUEST_CODE);
+                        CAMERA_CAPTURE_PERMISSIONS_REQUEST_CODE);
             }
 
         } else {
@@ -212,7 +476,7 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == CropImage.CAMERA_CAPTURE_PERMISSIONS_REQUEST_CODE) {
+        if (requestCode == CAMERA_CAPTURE_PERMISSIONS_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startPickImageActivity(MainActivity.this);
             } else {
@@ -220,39 +484,16 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
                         .show();
             }
         }
-//        if (requestCode == CropImage.PICK_IMAGE_PERMISSIONS_REQUEST_CODE) {
-//            if (mCropImageUri != null
-//                    && grantResults.length > 0
-//                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-//                mCropImageView.setImageUriAsync(mCropImageUri);
-//            } else {
-//                Toast.makeText(this, "Cancelling, required permissions are not granted", Toast.LENGTH_LONG)
-//                        .show();
-//            }
-//        }
     }
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == PICK_IMAGE_CHOOSER_REQUEST_CODE
                 && resultCode == AppCompatActivity.RESULT_OK) {
-            Uri imageUri = CropImage.getPickImageResultUri(this, data);
 
             image = getBase64FromPath(mCurrentPhotoPath);
-
-            mCropImageView.setImageUriAsync(Uri.fromFile(new File(mCurrentPhotoPath)));
-
+            setImageData(Uri.fromFile(new File(mCurrentPhotoPath)));
             rootView.setVisibility(View.VISIBLE);
-
-        } else{
-            processCameraCanceled();
         }
-    }
-
-    private void processCameraCanceled(){
-        Intent data = new Intent();
-        setResult(RESULT_CANCELED, data);
-
-        finish();
     }
 
     private void onClick(){
@@ -274,17 +515,21 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
             public void onClick(View v) {
                 MerchantName = new String();
 
-                imgMerchantNameScan.setVisibility(View.GONE);
-                imgMerchantNameDone.setVisibility(View.VISIBLE);
+                
                 imgDateScan.setVisibility(View.VISIBLE);
                 imgDateDone.setVisibility(View.GONE);
                 imgAmountScan.setVisibility(View.VISIBLE);
                 imgAmountDone.setVisibility(View.GONE);
 
-                if(!mCropImageView.isShowCropOverlay()){
-                    mCropImageView.setShowCropOverlay(true);
+                if(scanningID == SCANNING_ID_NOTHING){
+                    imgMerchantNameScan.setVisibility(View.GONE);
+                    imgMerchantNameDone.setVisibility(View.VISIBLE);
+                    scanningID = SCANNING_ID_MERCHANT_NAME;
+                } else{
+                    imgMerchantNameScan.setVisibility(View.VISIBLE);
+                    imgMerchantNameDone.setVisibility(View.GONE);
+                    scanningID = SCANNING_ID_NOTHING;
                 }
-                scanningID = SCANNING_ID_MERCHANT_NAME;
             }
         });
 
@@ -295,15 +540,18 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
 
                 imgMerchantNameScan.setVisibility(View.VISIBLE);
                 imgMerchantNameDone.setVisibility(View.GONE);
-                imgDateScan.setVisibility(View.GONE);
-                imgDateDone.setVisibility(View.VISIBLE);
                 imgAmountScan.setVisibility(View.VISIBLE);
                 imgAmountDone.setVisibility(View.GONE);
 
-                if(!mCropImageView.isShowCropOverlay()){
-                    mCropImageView.setShowCropOverlay(true);
+                if(scanningID == SCANNING_ID_NOTHING){
+                    imgDateScan.setVisibility(View.GONE);
+                    imgDateDone.setVisibility(View.VISIBLE);
+                    scanningID = SCANNING_ID_DATE;
+                } else{
+                    imgDateScan.setVisibility(View.VISIBLE);
+                    imgDateDone.setVisibility(View.GONE);
+                    scanningID = SCANNING_ID_NOTHING;
                 }
-                scanningID = SCANNING_ID_DATE;
             }
         });
 
@@ -319,10 +567,15 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
                 imgAmountScan.setVisibility(View.GONE);
                 imgAmountDone.setVisibility(View.VISIBLE);
 
-                if(!mCropImageView.isShowCropOverlay()){
-                    mCropImageView.setShowCropOverlay(true);
+                if(scanningID == SCANNING_ID_NOTHING){
+                    imgAmountScan.setVisibility(View.GONE);
+                    imgAmountDone.setVisibility(View.VISIBLE);
+                    scanningID = SCANNING_ID_AMOUNT;
+                } else{
+                    imgAmountScan.setVisibility(View.VISIBLE);
+                    imgAmountDone.setVisibility(View.GONE);
+                    scanningID = SCANNING_ID_NOTHING;
                 }
-                scanningID = SCANNING_ID_AMOUNT;
             }
         });
 
@@ -337,10 +590,6 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
                 imgDateDone.setVisibility(View.GONE);
                 imgAmountScan.setVisibility(View.VISIBLE);
                 imgAmountDone.setVisibility(View.GONE);
-
-                if(!mCropImageView.isShowCropOverlay()){
-                    mCropImageView.setShowCropOverlay(true);
-                }
                 scanningID = SCANNING_ID_MERCHANT_NAME;
             }
         });
@@ -352,7 +601,6 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
                 imgMerchantNameDone.setVisibility(View.GONE);
                 imgMerchantNameScan.setVisibility(View.VISIBLE);
 
-                mCropImageView.setShowCropOverlay(false);
                 scanningID = SCANNING_ID_NOTHING;
             }
         });
@@ -369,9 +617,6 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
                 imgAmountScan.setVisibility(View.VISIBLE);
                 imgAmountDone.setVisibility(View.GONE);
 
-                if(!mCropImageView.isShowCropOverlay()){
-                    mCropImageView.setShowCropOverlay(true);
-                }
                 scanningID = SCANNING_ID_DATE;
             }
         });
@@ -383,7 +628,6 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
                 imgDateDone.setVisibility(View.GONE);
                 imgDateScan.setVisibility(View.VISIBLE);
 
-                mCropImageView.setShowCropOverlay(false);
                 scanningID = SCANNING_ID_NOTHING;
             }
         });
@@ -400,9 +644,6 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
                 imgAmountScan.setVisibility(View.GONE);
                 imgAmountDone.setVisibility(View.VISIBLE);
 
-                if(!mCropImageView.isShowCropOverlay()){
-                    mCropImageView.setShowCropOverlay(true);
-                }
                 scanningID = SCANNING_ID_AMOUNT;
             }
         });
@@ -414,7 +655,6 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
                 imgAmountDone.setVisibility(View.GONE);
                 imgAmountScan.setVisibility(View.VISIBLE);
 
-                mCropImageView.setShowCropOverlay(false);
                 scanningID = SCANNING_ID_NOTHING;
             }
         });
@@ -450,57 +690,6 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
         Amount = edtAmount.getText().toString().trim();
     }
 
-    @Override
-    public void onCropImageComplete(CropImageView view, CropImageView.CropResult result) {
-        handleCropResult(result);
-    }
-
-    @Override
-    public void onSetImageUriComplete(CropImageView view, Uri uri, Exception error) {
-
-    }
-
-    private void handleCropResult(CropImageView.CropResult result) {
-        if (result.getError() == null) {
-            String scanResult = new String();
-
-            TextRecognizer ocrFrame = new TextRecognizer.Builder(getApplicationContext()).build();
-            Frame frame = new Frame.Builder().setBitmap(mCropImageView.getCropShape() == CropImageView.CropShape.OVAL
-                    ? CropImage.toOvalBitmap(result.getBitmap())
-                    : result.getBitmap()).build();
-            if (ocrFrame.isOperational()) {
-                Log.e(TAG, "Textrecognizer is operational");
-            }
-            SparseArray<TextBlock> textBlocks = ocrFrame.detect(frame);
-
-            if (textBlocks.size() > 0) {
-                for (int i = 0; i < textBlocks.size(); i++) {
-
-                    TextBlock textBlock = textBlocks.get(textBlocks.keyAt(i));
-                    scanResult = scanResult.length() > 1 ? scanResult + " " + textBlock.getValue() : textBlock.getValue();
-                }
-
-                if (scanningID == SCANNING_ID_MERCHANT_NAME) {
-                    edtMerchantName.setText(scanResult);
-                } else if (scanningID == SCANNING_ID_DATE) {
-                    edtDate.setText(scanResult);
-                } else if (scanningID == SCANNING_ID_AMOUNT) {
-                    edtAmount.setText(scanResult);
-                }
-
-                cropHandler.removeCallbacks(cropRunnable);
-            }
-
-        } else {
-            Log.e("AIC", "Failed to crop image", result.getError());
-            /**Toast.makeText(
-                    MainActivity.this,
-                    "Image crop failed: " + result.getError().getMessage(),
-                    Toast.LENGTH_SHORT)
-                    .show();*/
-        }
-    }
-
     private void startPickImageActivity(Activity activity) {
 
         dispatchTakePictureIntent();
@@ -522,7 +711,7 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
             // Continue only if the File was successfully created
             if (photoFile != null) {
                 Uri photoURI = FileProvider.getUriForFile(this,
-                        "com.oracle.scanreceive.fileprovider",
+                        "com.oracle.scanreceipt.fileprovider",
                         photoFile);
                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
                 takePictureIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -653,4 +842,38 @@ public class MainActivity extends AppCompatActivity implements CropImageView.OnS
 
         return decodedByte;
     }
+
+    //==================================== ask camera permission =============================================
+    public static boolean isExplicitCameraPermissionRequired(@NonNull Context context) {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && hasPermissionInManifest(context, "android.permission.CAMERA")
+                && context.checkSelfPermission(Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED;
+    }
+
+    /**
+     * Check if the app requests a specific permission in the manifest.
+     *
+     * @param permissionName the permission to check
+     * @return true - the permission in requested in manifest, false - not.
+     */
+    public static boolean hasPermissionInManifest(
+            @NonNull Context context, @NonNull String permissionName) {
+        String packageName = context.getPackageName();
+        try {
+            PackageInfo packageInfo =
+                    context.getPackageManager().getPackageInfo(packageName, PackageManager.GET_PERMISSIONS);
+            final String[] declaredPermisisons = packageInfo.requestedPermissions;
+            if (declaredPermisisons != null && declaredPermisisons.length > 0) {
+                for (String p : declaredPermisisons) {
+                    if (p.equalsIgnoreCase(permissionName)) {
+                        return true;
+                    }
+                }
+            }
+        } catch (PackageManager.NameNotFoundException e) {
+        }
+        return false;
+    }
+    //==================================== ask camera permission =============================================
 }

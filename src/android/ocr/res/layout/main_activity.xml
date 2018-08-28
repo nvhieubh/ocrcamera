@@ -320,10 +320,23 @@
             android:layout_marginTop="@dimen/padding_normal"
             android:orientation="vertical">
 
-            <com.theartofdev.edmodo.cropper.CropImageView
-                android:id="@+id/cropImageView"
+            <FrameLayout
+                android:id="@+id/ucrop_frame"
+                android:layout_marginBottom="@dimen/padding_normal"
+                android:layout_marginLeft="@dimen/padding_normal"
+                android:layout_marginRight="@dimen/padding_normal"
+                android:layout_marginTop="@dimen/padding_normal"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent" />
+                android:background="@color/color_grey"
+                android:layout_height="match_parent">
+
+                <cordova.plugin.ocrcamera.UCropView
+                    android:id="@+id/ucrop"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:alpha="0" />
+
+            </FrameLayout>
 
         </RelativeLayout>
 
