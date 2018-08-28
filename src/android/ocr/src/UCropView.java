@@ -39,6 +39,7 @@ public class UCropView extends FrameLayout {
         mViewOverlay.processStyledAttributes(a);
         mGestureCropImageView.processStyledAttributes(a, r);
         a.recycle();
+        mGestureCropImageView.setOnCropImageViewChangedListener((MainActivity)context);
 
         setListenersToViews();
     }

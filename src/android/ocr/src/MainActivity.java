@@ -24,7 +24,6 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Base64;
-import android.util.Log;
 import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,7 +35,7 @@ import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.LinearLayout;
-import android.widget.Toast;
+import android.util.Log;
 
 import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.text.TextBlock;
@@ -390,8 +389,6 @@ public class MainActivity extends AppCompatActivity implements OnCropImageViewCh
 
     protected void setResultUri(Uri uri, float resultAspectRatio, int offsetX, int offsetY, int imageWidth, int imageHeight) {
 
-        Log.d("namnt", "image width = " + imageWidth + " - height = " + imageHeight);
-
         try {
             getImageBitmapFromUri(uri);
         }catch (Exception e){
@@ -412,7 +409,6 @@ public class MainActivity extends AppCompatActivity implements OnCropImageViewCh
 
                     @Override
                     public void onFailure(@NonNull Exception bitmapWorkerException) {
-                        Log.e(TAG, "onFailure: setImageUri", bitmapWorkerException);
                     }
                 });
     }
@@ -423,7 +419,6 @@ public class MainActivity extends AppCompatActivity implements OnCropImageViewCh
         TextRecognizer ocrFrame = new TextRecognizer.Builder(getApplicationContext()).build();
         Frame frame = new Frame.Builder().setBitmap(bitmap).build();
         if (ocrFrame.isOperational()) {
-            Log.e(TAG, "Textrecognizer is operational");
         }
         SparseArray<TextBlock> textBlocks = ocrFrame.detect(frame);
 
@@ -448,11 +443,7 @@ public class MainActivity extends AppCompatActivity implements OnCropImageViewCh
     }
 
     protected void setResultError(Throwable throwable) {
-        Toast.makeText(
-                MainActivity.this,
-                "Image crop failed: " + throwable.getMessage(),
-                Toast.LENGTH_SHORT)
-                .show();
+        // Handle Crop Error Here
     }
 
     // =========================== Handle Load and Crop Image ===========================
@@ -479,9 +470,6 @@ public class MainActivity extends AppCompatActivity implements OnCropImageViewCh
         if (requestCode == CAMERA_CAPTURE_PERMISSIONS_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startPickImageActivity(MainActivity.this);
-            } else {
-                Toast.makeText(this, "Cancelling, required permissions are not granted", Toast.LENGTH_LONG)
-                        .show();
             }
         }
     }
@@ -493,6 +481,9 @@ public class MainActivity extends AppCompatActivity implements OnCropImageViewCh
             image = getBase64FromPath(mCurrentPhotoPath);
             setImageData(Uri.fromFile(new File(mCurrentPhotoPath)));
             rootView.setVisibility(View.VISIBLE);
+        } else {
+            setResult(RESULT_CANCELED, new Intent());
+            finish();
         }
     }
 
@@ -501,7 +492,6 @@ public class MainActivity extends AppCompatActivity implements OnCropImageViewCh
         imgCancel.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Toast.makeText(MainActivity.this, "on cancel clicked", Toast.LENGTH_SHORT).show();
 
                 Intent data = new Intent();
                 setResult(RESULT_CANCELED, data);
@@ -662,7 +652,6 @@ public class MainActivity extends AppCompatActivity implements OnCropImageViewCh
         llExpense.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //Toast.makeText(MainActivity.this, "on expense click callbacked 1", Toast.LENGTH_SHORT).show();
                 Intent resultIntent = new Intent();
                 Bundle res = new Bundle();
 
@@ -677,7 +666,6 @@ public class MainActivity extends AppCompatActivity implements OnCropImageViewCh
                 res.putStringArrayList("MULTIPLEFILENAMES", results);
                 resultIntent.putExtras(res);
                 setResult(RESULT_OK, resultIntent);
-                //Toast.makeText(MainActivity.this, "on expense click callbacked 2", Toast.LENGTH_LONG).show();
                 finish();
             }
         });
@@ -769,20 +757,16 @@ public class MainActivity extends AppCompatActivity implements OnCropImageViewCh
             destHeight = origHeight;
         }
 
-        //Toast.makeText(MainActivity.this, "Width = " + destWidth + " - Height = " + destHeight, Toast.LENGTH_SHORT).show();
-        Log.d("NamNT", "Compressed Image Width = " + destWidth + " - Height = " + destHeight);
-
         // we create an scaled bitmap so it reduces the image, not just trim it
         Bitmap bm2 = Bitmap.createScaledBitmap(bm, destWidth, destHeight, false);
 
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        bm2.compress(Bitmap.CompressFormat.JPEG, 30, byteArrayOutputStream);
+        bm2.compress(Bitmap.CompressFormat.JPEG, 40, byteArrayOutputStream);
 
         byte[] bytes = byteArrayOutputStream.toByteArray();
         String encImage = Base64.encodeToString(bytes, Base64.DEFAULT);
         //Base64.de
 
-        Log.d("NamNT", encImage.toString() + "");
         return encImage;
     }
 
