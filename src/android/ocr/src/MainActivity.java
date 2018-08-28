@@ -511,7 +511,7 @@ public class MainActivity extends AppCompatActivity implements OnCropImageViewCh
                 imgAmountScan.setVisibility(View.VISIBLE);
                 imgAmountDone.setVisibility(View.GONE);
 
-                if(scanningID == SCANNING_ID_NOTHING){
+                if(scanningID == SCANNING_ID_NOTHING || scanningID != SCANNING_ID_MERCHANT_NAME){
                     imgMerchantNameScan.setVisibility(View.GONE);
                     imgMerchantNameDone.setVisibility(View.VISIBLE);
                     scanningID = SCANNING_ID_MERCHANT_NAME;
@@ -533,7 +533,7 @@ public class MainActivity extends AppCompatActivity implements OnCropImageViewCh
                 imgAmountScan.setVisibility(View.VISIBLE);
                 imgAmountDone.setVisibility(View.GONE);
 
-                if(scanningID == SCANNING_ID_NOTHING){
+                if(scanningID == SCANNING_ID_NOTHING || scanningID != SCANNING_ID_DATE){
                     imgDateScan.setVisibility(View.GONE);
                     imgDateDone.setVisibility(View.VISIBLE);
                     scanningID = SCANNING_ID_DATE;
@@ -557,7 +557,7 @@ public class MainActivity extends AppCompatActivity implements OnCropImageViewCh
                 imgAmountScan.setVisibility(View.GONE);
                 imgAmountDone.setVisibility(View.VISIBLE);
 
-                if(scanningID == SCANNING_ID_NOTHING){
+                if(scanningID == SCANNING_ID_NOTHING || scanningID != SCANNING_ID_AMOUNT){
                     imgAmountScan.setVisibility(View.GONE);
                     imgAmountDone.setVisibility(View.VISIBLE);
                     scanningID = SCANNING_ID_AMOUNT;
