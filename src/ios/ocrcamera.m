@@ -64,7 +64,7 @@
             UIImage *imageCompress = [self resizeImage:img percent:1];
             NSData* data = UIImageJPEGRepresentation(imageCompress, 0.4);
             NSString *img64=[data base64EncodedString];
-            NSLog(@"img64 : %@\n", img64);
+            //NSLog(@"img64 : %@\n", img64);
             //long  lenImg =[img64 length];
             //NSLog(@"Length of img64 :  %d\n", lenImg );
             [result setObject:img64 forKey:@"image"];
